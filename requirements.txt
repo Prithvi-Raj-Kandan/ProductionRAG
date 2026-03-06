@@ -1,0 +1,6 @@
+pypdf
+langchain_google_genai
+chromadb
+langchain
+python-dotenv
+langchain-text-splitters
