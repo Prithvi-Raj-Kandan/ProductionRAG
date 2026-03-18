@@ -1,34 +1,55 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_classic.chains.retrieval  import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.retrievers.ensemble import EnsembleRetriever
+from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.vectorstores import Chroma
-from vectorstore_handler import embedding_model, persist_directory, collection_name
+from langchain_chroma import Chroma
+from langchain_community.retrievers import BM25Retriever 
+from langchain_cohere import CohereRerank
+import vectorstore_handler
 from dotenv import load_dotenv
 import os
+
+import vectorstore_handler
 
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 
 def retrieve_answer(query: str):
 
     vectorstore = Chroma(
-        collection_name=collection_name,
-        persist_directory=persist_directory,
-        embedding_function=embedding_model
+        collection_name=vectorstore_handler.collection_name,
+        persist_directory=vectorstore_handler.persist_directory,
+        embedding_function=vectorstore_handler.embedding_model
     )
-
-    retriever = vectorstore.as_retriever(
+    
+    semantic_retriever = vectorstore.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": 3}
+        search_kwargs={"k": 10}
     )
 
+    if not vectorstore_handler.documents:
+        ensemble_retriever = semantic_retriever
+    else:    
+        bm25_retriever = BM25Retriever.from_documents(documents=vectorstore_handler.documents, k=10)
+        ensemble_retriever = EnsembleRetriever(retrievers=[bm25_retriever, semantic_retriever], weights=[0.3, 0.7])
+    
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
         google_api_key=GOOGLE_API_KEY
     )
-
+    compressor = CohereRerank(
+        cohere_api_key=COHERE_API_KEY,
+        model="rerank-english-v3.0",
+        top_n=3
+    )
+    retriever = ContextualCompressionRetriever(
+        base_compressor=compressor,
+        base_retriever=ensemble_retriever
+    )
     system_prompt = (
         "Use the provided context to answer the question. "
         "If the answer is not present in the context, say you don't know. "

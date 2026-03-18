@@ -7,6 +7,7 @@ from pdf_handler import extract_pages_from_pdf, create_chunks, extract_text_from
 from vectorstore_handler import create_and_store_embeddings 
 import logging
 from rag_chain import retrieve_answer
+from eval import evaluate_pipeline
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
@@ -23,6 +24,7 @@ app.add_middleware(
 
 UPLOAD_DIR = "Uploaded_pdfs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
 @app.post("/upload_pdf")
 async def upload_pdf(files: List[UploadFile]):
@@ -49,6 +51,7 @@ async def upload_pdf(files: List[UploadFile]):
     
     try:
         all_text = extract_text_from_pages(pages)
+        logger.info(f"Extracted text from {len(pages)} pages.")
     except Exception as e:
         logger.error(f"Error extracting text from pages: {e}")
         return {"error": "Failed to extract text from pages."}
@@ -69,6 +72,7 @@ async def upload_pdf(files: List[UploadFile]):
                     "paragraph_no": i + 1  # Sequential per page
                 })
             chunk_index += len(page_chunks)
+        logger.info(f"Created {len(chunks_with_metadata)} chunks with metadata.")    
     except Exception as e:
         logger.error(f"Error creating chunks: {e}")
         return {"error": "Failed to create chunks from text."}   
@@ -82,13 +86,11 @@ async def upload_pdf(files: List[UploadFile]):
         return {"error": "Failed to create/store embeddings."}
         
     return {"message": f"Files uploaded and processed successfully at {UPLOAD_DIR}", "files": uploaded_files}
-import os
 
 @app.get("/query")
-def query(question: str):
+async def query(question: str):
     try:
         result = retrieve_answer(question)
-
         sources = []
 
         for doc in result["context"]:
@@ -97,7 +99,7 @@ def query(question: str):
                 "page": doc.metadata.get("page_no"),
                 "paragraph": doc.metadata.get("paragraph_no")
             })
-
+        logger.info(f"Query: {question}, Answer: {result['answer']}, Sources: {sources}")
         return {
             "answer": result["answer"],
             "sources": sources
