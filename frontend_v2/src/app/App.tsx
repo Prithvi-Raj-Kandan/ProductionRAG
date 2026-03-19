@@ -33,40 +33,41 @@ export default function App() {
     setMessages(prev => [...prev, userMessage]);
     setIsProcessing(true);
 
-    // Simulate API call - replace this with your backend integration
-    setTimeout(() => {
+    try {
+      const url = new URL('http://localhost:8000/query');
+      url.searchParams.append('question', content);
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'This is a placeholder response. Connect your RAG backend to get real answers based on your uploaded documents.',
+        content: data.answer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error querying backend:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "Sorry, I couldn't reach the backend to answer your question.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsProcessing(false);
-    }, 1000);
-
-    // TODO: Replace the above with your actual backend call
-    // Example:
-    // try {
-    //   const response = await fetch('YOUR_BACKEND_URL/query', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ query: content })
-    //   });
-    //   const data = await response.json();
-    //   const assistantMessage: Message = {
-    //     id: (Date.now() + 1).toString(),
-    //     role: 'assistant',
-    //     content: data.answer,
-    //     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    //   };
-    //   setMessages(prev => [...prev, assistantMessage]);
-    // } catch (error) {
-    //   console.error('Error:', error);
-    // } finally {
-    //   setIsProcessing(false);
-    // }
+    }
   };
 
   return (

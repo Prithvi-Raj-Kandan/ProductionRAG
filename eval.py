@@ -1,4 +1,4 @@
-from ragas import evaluate
+"""from ragas import evaluate
 from ragas.metrics.collections import faithfulness , answer_correctness
 from ragas.testset import TestsetGenerator
 import vectorstore_handler
@@ -25,3 +25,4 @@ def evaluate_pipeline():
     return df
 
 evaluate_pipeline()
+"""
