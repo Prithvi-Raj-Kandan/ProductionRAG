@@ -4,3 +4,7 @@ chromadb
 langchain
 python-dotenv
 langchain-text-splitters
+ragas
+pandas
+langchain_chroma
+langchain_cohere

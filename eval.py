@@ -1,4 +1,4 @@
-"""from ragas import evaluate
+from ragas import evaluate, RunConfig
 from ragas.metrics.collections import faithfulness , answer_correctness
 from ragas.testset import TestsetGenerator
 import vectorstore_handler
@@ -20,9 +20,8 @@ def evaluate_pipeline():
     score = evaluate(dataset, metrics=[faithfulness, answer_correctness])
     df = score.to_pandas()
     file_path = os.path.join(EVAL_DIR, "evaluation_results.csv")
-    df.to_csv(file_path, index=False)  # to_csv writes directly to path, returns None
+    df.to_csv(file_path, index=False)  
     print(f"Evaluation results saved to {file_path}")
     return df
 
 evaluate_pipeline()
-"""

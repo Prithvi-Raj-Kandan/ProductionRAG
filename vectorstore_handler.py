@@ -43,14 +43,11 @@ def load_documents():
             except json.JSONDecodeError:
                 documents = []
     return documents
-
-# Load documents on module import
+    
 load_documents()
 
 def create_and_store_embeddings(chunks):
     global documents
-    # Start fresh for this upload logic if we want to replace or just append
-    # If appending, we do: new_docs = [] instead of clearing documents
     new_docs = []
 
     for chunk in chunks:
@@ -66,14 +63,12 @@ def create_and_store_embeddings(chunks):
         documents.append(doc)
         
     save_documents(documents)
-    BATCH_SIZE = 80  # safely under 100 RPM limit
+    BATCH_SIZE = 80  
     total_batches = math.ceil(len(new_docs) / BATCH_SIZE)
 
     for i in range(total_batches):
         batch = new_docs[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
         vectorstore.add_documents(batch)
-        
-        # wait between batches, skip delay after last batch
         if i < total_batches - 1:
             print(f"Batch {i+1}/{total_batches} embedded, waiting 60s for rate limit...")
             time.sleep(60)

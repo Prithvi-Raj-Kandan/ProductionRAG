@@ -11,8 +11,6 @@ from rag_chain import retrieve_answer
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 logger = logging.getLogger(__name__)
-
-# allow frontend origin for local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"],
@@ -38,8 +36,7 @@ async def upload_pdf(files: List[UploadFile]):
     except Exception as e: 
         logger.error(f"Error uploading files: {e}")
         return {"error": "Failed to upload files."}
-    
-    # Process all uploaded PDFs
+
     try:
         pdf_paths = [os.path.join(UPLOAD_DIR, f) for f in uploaded_files]
         pages = extract_pages_from_pdf(pdf_paths)
@@ -56,19 +53,17 @@ async def upload_pdf(files: List[UploadFile]):
         return {"error": "Failed to extract text from pages."}
     
     try:
-        chunk_texts = create_chunks(all_text)  # Returns list of strings
-        # Build chunks with metadata using page info
+        chunk_texts = create_chunks(all_text)  
         chunks_with_metadata = []
         chunk_index = 0
         for page in pages:
-            # Split chunks per page (approximate; adjust if needed)
             page_chunks = chunk_texts[chunk_index:chunk_index + len(chunk_texts) // len(pages) + 1]  # Simple distribution
             for i, chunk_text in enumerate(page_chunks):
                 chunks_with_metadata.append({
                     "text": chunk_text,
                     "pdf_name": page["pdf_name"],
                     "page_no": page["page_no"],
-                    "paragraph_no": i + 1  # Sequential per page
+                    "paragraph_no": i + 1  
                 })
             chunk_index += len(page_chunks)
         logger.info(f"Created {len(chunks_with_metadata)} chunks with metadata.")    
@@ -76,7 +71,6 @@ async def upload_pdf(files: List[UploadFile]):
         logger.error(f"Error creating chunks: {e}")
         return {"error": "Failed to create chunks from text."}   
     
-    # Store embeddings in vector store
     try:
         create_and_store_embeddings(chunks_with_metadata)
         logger.info(f"Stored {len(chunks_with_metadata)} chunks in ChromaDB.")
