@@ -7,7 +7,6 @@ from pdf_handler import extract_pages_from_pdf, create_chunks, extract_text_from
 from vectorstore_handler import create_and_store_embeddings 
 import logging
 from rag_chain import retrieve_answer
-from eval import evaluate_pipeline
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 # allow frontend origin for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

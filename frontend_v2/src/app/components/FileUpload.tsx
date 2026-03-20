@@ -1,10 +1,11 @@
-import { Upload, File, X } from 'lucide-react';
+import { Upload, File, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 interface UploadedFile {
   id: string;
   name: string;
   size: number;
+  status?: 'uploading' | 'success' | 'error';
 }
 
 interface FileUploadProps {
@@ -38,16 +39,47 @@ export function FileUpload({ onFilesChange }: FileUploadProps) {
     }
   };
 
-  const processFiles = (files: File[]) => {
-    const newFiles: UploadedFile[] = files.map(file => ({
+  const processFiles = async (files: File[]) => {
+    const uploadingFiles: UploadedFile[] = files.map(file => ({
       id: Math.random().toString(36).substring(7),
       name: file.name,
-      size: file.size
+      size: file.size,
+      status: 'uploading'
     }));
     
-    const updatedFiles = [...uploadedFiles, ...newFiles];
-    setUploadedFiles(updatedFiles);
-    onFilesChange?.(updatedFiles);
+    setUploadedFiles(prev => [...prev, ...uploadingFiles]);
+
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+
+    try {
+      const response = await fetch('http://localhost:8000/upload_pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      setUploadedFiles(prev => prev.map(f => 
+        uploadingFiles.find(uf => uf.id === f.id) 
+          ? { ...f, status: 'success' } 
+          : f
+      ));
+      
+      // Let parent know about the latest successfully uploaded state if needed
+      onFilesChange?.(uploadedFiles.concat(uploadingFiles.map(f => ({...f, status: 'success'}))));
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      setUploadedFiles(prev => prev.map(f => 
+        uploadingFiles.find(uf => uf.id === f.id) 
+          ? { ...f, status: 'error' } 
+          : f
+      ));
+    }
   };
 
   const removeFile = (id: string) => {
@@ -109,7 +141,12 @@ export function FileUpload({ onFilesChange }: FileUploadProps) {
                 <File className="text-blue-600" size={20} />
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-900 truncate">{file.name}</p>
-                  <p className="text-gray-400">{formatFileSize(file.size)}</p>
+                  <p className="text-gray-400 flex items-center gap-1">
+                    {formatFileSize(file.size)}
+                    {file.status === 'uploading' && <span className="text-blue-500 text-xs ml-2 flex items-center"><Loader2 size={12} className="animate-spin mr-1"/> Processing...</span>}
+                    {file.status === 'success' && <span className="text-green-500 text-xs ml-2 flex items-center"><CheckCircle size={12} className="mr-1"/> Upload Successful</span>}
+                    {file.status === 'error' && <span className="text-red-500 text-xs ml-2 flex items-center"><AlertCircle size={12} className="mr-1"/> Failed</span>}
+                  </p>
                 </div>
                 <button
                   onClick={() => removeFile(file.id)}
