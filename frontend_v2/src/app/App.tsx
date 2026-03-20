@@ -8,6 +8,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  sources?: { pdf: string; page: number; paragraph: number }[];
 }
 
 export default function App() {
@@ -53,7 +54,8 @@ export default function App() {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.answer,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sources: data.sources
       };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
@@ -93,6 +95,7 @@ export default function App() {
               role={message.role}
               content={message.content}
               timestamp={message.timestamp}
+              sources={message.sources}
             />
           ))}
           
