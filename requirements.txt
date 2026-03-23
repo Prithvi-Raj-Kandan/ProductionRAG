@@ -13,3 +13,4 @@ ragas
 pandas
 langchain_chroma
 langchain_cohere
+rank_bm25
