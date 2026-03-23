@@ -1,6 +1,8 @@
 import { Upload, File, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+
 interface UploadedFile {
   id: string;
   name: string;
@@ -57,7 +59,7 @@ export function FileUpload({ sessionId, onFilesChange }: FileUploadProps) {
     formData.append('session_id', sessionId);
 
     try {
-      const response = await fetch('http://localhost:8000/upload_pdf', {
+      const response = await fetch(`${API_BASE_URL}/upload_pdf`, {
         method: 'POST',
         body: formData,
       });

@@ -3,6 +3,8 @@ import { FileUpload } from './components/FileUpload';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -16,13 +18,13 @@ export default function App() {
 
   useEffect(() => {
     const handleUnload = () => {
-      navigator.sendBeacon(`http://localhost:8000/cleanup?session_id=${sessionId}`);
+      navigator.sendBeacon(`${API_BASE_URL}/cleanup?session_id=${sessionId}`);
     };
     window.addEventListener('beforeunload', handleUnload);
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
       // Clean up if component just unmounts in a SPA setting
-      fetch(`http://localhost:8000/cleanup?session_id=${sessionId}`, { method: 'DELETE' }).catch(() => {});
+      fetch(`${API_BASE_URL}/cleanup?session_id=${sessionId}`, { method: 'DELETE' }).catch(() => {});
     };
   }, [sessionId]);
 
@@ -49,7 +51,7 @@ export default function App() {
     setIsProcessing(true);
 
     try {
-      const url = new URL('http://localhost:8000/query');
+      const url = new URL(`${API_BASE_URL}/query`);
       url.searchParams.append('question', content);
       url.searchParams.append('session_id', sessionId);
 
