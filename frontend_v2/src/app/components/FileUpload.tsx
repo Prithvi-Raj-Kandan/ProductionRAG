@@ -9,10 +9,11 @@ interface UploadedFile {
 }
 
 interface FileUploadProps {
+  sessionId: string;
   onFilesChange?: (files: UploadedFile[]) => void;
 }
 
-export function FileUpload({ onFilesChange }: FileUploadProps) {
+export function FileUpload({ sessionId, onFilesChange }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -53,6 +54,7 @@ export function FileUpload({ onFilesChange }: FileUploadProps) {
     files.forEach(file => {
       formData.append('files', file);
     });
+    formData.append('session_id', sessionId);
 
     try {
       const response = await fetch('http://localhost:8000/upload_pdf', {

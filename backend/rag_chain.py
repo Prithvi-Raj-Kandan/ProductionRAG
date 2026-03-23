@@ -18,23 +18,25 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 
-def retrieve_answer(query: str):
+def retrieve_answer(query: str, session_id: str):
 
-    vectorstore = Chroma(
-        collection_name=vectorstore_handler.collection_name,
-        persist_directory=vectorstore_handler.persist_directory,
-        embedding_function=vectorstore_handler.embedding_model
-    )
+    session_data = vectorstore_handler.user_sessions.get(session_id, {})
+    vectorstore = session_data.get("vectorstore")
     
+    if not vectorstore:
+        raise ValueError("No context found! Please upload a document first.")
+
     semantic_retriever = vectorstore.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 10}
     )
 
-    if not vectorstore_handler.documents:
+    session_docs = session_data.get("documents", [])
+
+    if not session_docs:
         ensemble_retriever = semantic_retriever
     else:    
-        bm25_retriever = BM25Retriever.from_documents(documents=vectorstore_handler.documents, k=10)
+        bm25_retriever = BM25Retriever.from_documents(documents=session_docs, k=10)
         ensemble_retriever = EnsembleRetriever(retrievers=[bm25_retriever, semantic_retriever], weights=[0.3, 0.7])
     
     llm = ChatGoogleGenerativeAI(

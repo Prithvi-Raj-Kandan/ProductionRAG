@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
@@ -12,6 +12,20 @@ interface Message {
 }
 
 export default function App() {
+  const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
+
+  useEffect(() => {
+    const handleUnload = () => {
+      navigator.sendBeacon(`http://localhost:8000/cleanup?session_id=${sessionId}`);
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      // Clean up if component just unmounts in a SPA setting
+      fetch(`http://localhost:8000/cleanup?session_id=${sessionId}`, { method: 'DELETE' }).catch(() => {});
+    };
+  }, [sessionId]);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -37,6 +51,7 @@ export default function App() {
     try {
       const url = new URL('http://localhost:8000/query');
       url.searchParams.append('question', content);
+      url.searchParams.append('session_id', sessionId);
 
       const response = await fetch(url.toString(), {
         method: 'GET',
@@ -46,7 +61,8 @@ export default function App() {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
@@ -58,12 +74,12 @@ export default function App() {
         sources: data.sources
       };
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error querying backend:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "Sorry, I couldn't reach the backend to answer your question.",
+        content: error.message || "Sorry, I couldn't reach the backend to answer your question.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -76,7 +92,7 @@ export default function App() {
     <div className="size-full flex bg-gray-50">
       {/* Left Sidebar - File Upload */}
       <div className="w-96 flex-shrink-0">
-        <FileUpload />
+        <FileUpload sessionId={sessionId} />
       </div>
 
       {/* Right Main Area - Chat */}

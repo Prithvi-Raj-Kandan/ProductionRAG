@@ -1,10 +1,11 @@
-from fastapi import FastAPI, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, UploadFile, Form
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os 
+import shutil
 from typing import List
 from pdf_handler import extract_pages_from_pdf, create_chunks, extract_text_from_pages
-from vectorstore_handler import create_and_store_embeddings 
+from vectorstore_handler import create_and_store_embeddings, delete_session_data
 import logging
 from rag_chain import retrieve_answer
 
@@ -24,11 +25,14 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @app.post("/upload_pdf")
-async def upload_pdf(files: List[UploadFile]):
+async def upload_pdf(files: List[UploadFile], session_id: str = Form(...)):
     uploaded_files = []
+    session_upload_dir = os.path.join(UPLOAD_DIR, session_id)
+    os.makedirs(session_upload_dir, exist_ok=True)
+    
     try:   
         for file in files:
-            file_location = os.path.join(UPLOAD_DIR, file.filename)
+            file_location = os.path.join(session_upload_dir, file.filename)
             with open(file_location, "wb") as buffer:
                 buffer.write(file.file.read())
             uploaded_files.append(file.filename)    
@@ -38,7 +42,7 @@ async def upload_pdf(files: List[UploadFile]):
         return {"error": "Failed to upload files."}
 
     try:
-        pdf_paths = [os.path.join(UPLOAD_DIR, f) for f in uploaded_files]
+        pdf_paths = [os.path.join(session_upload_dir, f) for f in uploaded_files]
         pages = extract_pages_from_pdf(pdf_paths)
         logger.info(f"Extracted {len(pages)} pages from PDFs.")
     except Exception as e:
@@ -72,18 +76,21 @@ async def upload_pdf(files: List[UploadFile]):
         return {"error": "Failed to create chunks from text."}   
     
     try:
-        create_and_store_embeddings(chunks_with_metadata)
-        logger.info(f"Stored {len(chunks_with_metadata)} chunks in ChromaDB.")
+        create_and_store_embeddings(chunks_with_metadata, session_id)
+        logger.info(f"Stored {len(chunks_with_metadata)} chunks in ChromaDB for session {session_id}.")
     except Exception as e:
         logger.error(f"Error creating/storing embeddings: {e}")
-        return {"error": "Failed to create/store embeddings."}
+        error_str = str(e).lower()
+        if "429" in error_str or "quota" in error_str or "resource_exhausted" in error_str or "rate limit" in error_str:
+            return JSONResponse(status_code=429, content={"error": "API rate limit reached. Please try again after some time."})
+        return JSONResponse(status_code=500, content={"error": "Failed to create/store embeddings."})
         
-    return {"message": f"Files uploaded and processed successfully at {UPLOAD_DIR}", "files": uploaded_files}
+    return {"message": f"Files uploaded and processed successfully", "files": uploaded_files}
 
 @app.get("/query")
-async def query(question: str):
+async def query(question: str, session_id: str):
     try:
-        result = retrieve_answer(question)
+        result = retrieve_answer(question, session_id)
         sources = []
 
         for doc in result["context"]:
@@ -100,4 +107,22 @@ async def query(question: str):
 
     except Exception as e:
         logger.error(f"Error processing query: {e}")
-        return {"error": "Failed to process query."}
+        error_str = str(e).lower()
+        if "429" in error_str or "quota" in error_str or "resource_exhausted" in error_str or "rate limit" in error_str:
+            return JSONResponse(status_code=429, content={"error": "API rate limit reached. Please try again after some time."})
+        return JSONResponse(status_code=500, content={"error": "Failed to process query."})
+
+@app.delete("/cleanup")
+@app.post("/cleanup")
+async def cleanup(session_id: str):
+    try:
+        session_upload_dir = os.path.join(UPLOAD_DIR, session_id)
+        if os.path.exists(session_upload_dir):
+            shutil.rmtree(session_upload_dir)
+        
+        delete_session_data(session_id)
+        logger.info(f"Cleaned up session {session_id} successfully.")
+        return {"message": "Session cleaned up."}
+    except Exception as e:
+        logger.error(f"Error cleaning up session: {e}")
+        return {"error": "Failed to cleanup."}
