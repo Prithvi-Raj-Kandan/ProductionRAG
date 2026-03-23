@@ -28,6 +28,11 @@ UPLOAD_DIR = "Uploaded_pdfs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.post("/upload_pdf")
 async def upload_pdf(files: List[UploadFile], session_id: str = Form(...)):
     uploaded_files = []

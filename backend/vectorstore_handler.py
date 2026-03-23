@@ -10,11 +10,19 @@ import json
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+embedding_model = None
 
-embedding_model = GoogleGenerativeAIEmbeddings(
-    model="gemini-embedding-001",
-    google_api_key = GOOGLE_API_KEY
-)
+
+def get_embedding_model():
+    global embedding_model
+    if embedding_model is None:
+        if not GOOGLE_API_KEY:
+            raise ValueError("GOOGLE_API_KEY is not set.")
+        embedding_model = GoogleGenerativeAIEmbeddings(
+            model="gemini-embedding-001",
+            google_api_key=GOOGLE_API_KEY
+        )
+    return embedding_model
 
 user_sessions: dict[str, dict] = {}
 
@@ -46,7 +54,7 @@ def create_and_store_embeddings(chunks, session_id: str):
         
     vectorstore = Chroma(
         collection_name=f"session_{session_id}",
-        embedding_function=embedding_model
+        embedding_function=get_embedding_model()
     )
     session_data["vectorstore"] = vectorstore
 
