@@ -7,11 +7,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_chroma import Chroma
 from langchain_community.retrievers import BM25Retriever 
 from langchain_cohere import CohereRerank
-import vectorstore_handler
+import backend.vectorstore_handler as vectorstore_handler
 from dotenv import load_dotenv
 import os
-
-import vectorstore_handler
 
 load_dotenv()
 
