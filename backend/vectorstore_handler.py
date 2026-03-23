@@ -16,38 +16,20 @@ embedding_model = GoogleGenerativeAIEmbeddings(
     google_api_key = GOOGLE_API_KEY
 )
 
-persist_directory = "./chroma_db"
-collection_name = "my_collection"
+user_sessions: dict[str, dict] = {}
 
-vectorstore = Chroma(
-    collection_name=collection_name,
-    embedding_function=embedding_model,
-    persist_directory=persist_directory
-)
+def get_session_data(session_id: str):
+    if session_id not in user_sessions:
+        user_sessions[session_id] = {"documents": [], "vectorstore": None}
+    return user_sessions[session_id]
 
-documents_file = "documents.json"
-documents: list[Document] = []
+def delete_session_data(session_id: str):
+    if session_id in user_sessions:
+        # In-memory Chroma database drops cleanly when the python object is destroyed
+        del user_sessions[session_id]
 
-def save_documents(docs: list[Document]):
-    with open(documents_file, "w") as f:
-        json_docs = [{"page_content": d.page_content, "metadata": d.metadata} for d in docs]
-        json.dump(json_docs, f)
-
-def load_documents():
-    global documents
-    if os.path.exists(documents_file):
-        with open(documents_file, "r") as f:
-            try:
-                json_docs = json.load(f)
-                documents = [Document(page_content=d["page_content"], metadata=d["metadata"]) for d in json_docs]
-            except json.JSONDecodeError:
-                documents = []
-    return documents
-    
-load_documents()
-
-def create_and_store_embeddings(chunks):
-    global documents
+def create_and_store_embeddings(chunks, session_id: str):
+    session_data = get_session_data(session_id)
     new_docs = []
 
     for chunk in chunks:
@@ -60,9 +42,14 @@ def create_and_store_embeddings(chunks):
             }
         )
         new_docs.append(doc)
-        documents.append(doc)
+        session_data["documents"].append(doc)
         
-    save_documents(documents)
+    vectorstore = Chroma(
+        collection_name=f"session_{session_id}",
+        embedding_function=embedding_model
+    )
+    session_data["vectorstore"] = vectorstore
+
     BATCH_SIZE = 80  
     total_batches = math.ceil(len(new_docs) / BATCH_SIZE)
 
