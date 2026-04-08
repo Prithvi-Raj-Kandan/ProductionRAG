@@ -1,0 +1,16 @@
+pypdf
+fastapi
+uvicorn
+python-multipart
+langchain_google_genai
+chromadb
+langchain
+langchain-community
+langchain-classic
+python-dotenv
+langchain-text-splitters
+ragas
+pandas
+langchain_chroma
+langchain_cohere
+rank_bm25
