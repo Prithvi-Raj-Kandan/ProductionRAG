@@ -1,7 +1,10 @@
 from ragas import evaluate, RunConfig
 from ragas.metrics.collections import faithfulness , answer_correctness
 from ragas.testset import TestsetGenerator
-import backend.vectorstore_handler as vectorstore_handler
+try:
+    from . import vectorstore_handler
+except ImportError:
+    import vectorstore_handler
 from ragas.llms import LangchainLLMWrapper
 from langchain_google_genai import ChatGoogleGenerativeAI
 import os

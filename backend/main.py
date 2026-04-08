@@ -4,10 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 import os 
 import shutil
 from typing import List
-from backend.pdf_handler import extract_pages_from_pdf, create_chunks, extract_text_from_pages
-from backend.vectorstore_handler import create_and_store_embeddings, delete_session_data
 import logging
-from backend.rag_chain import retrieve_answer
+
+try:
+    from .pdf_handler import extract_pages_from_pdf, create_chunks, extract_text_from_pages
+    from .vectorstore_handler import create_and_store_embeddings, delete_session_data
+    from .rag_chain import retrieve_answer
+except ImportError:
+    from pdf_handler import extract_pages_from_pdf, create_chunks, extract_text_from_pages
+    from vectorstore_handler import create_and_store_embeddings, delete_session_data
+    from rag_chain import retrieve_answer
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
