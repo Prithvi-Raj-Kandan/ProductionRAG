@@ -19,6 +19,18 @@ link : https://production-rag-two.vercel.app/
 - `frontend_v2/`: frontend client
 - `Uploaded_pdfs/`: uploaded files
 
+## Architecture
+
+ProductionRAG uses a hybrid retrieval pipeline to improve answer quality and robustness:
+
+- **BM25 full-text search** retrieves chunks with strong keyword overlap (good for exact terms, IDs, and rare words).
+- **Vector semantic search** retrieves chunks by meaning from embedding similarity in ChromaDB.
+- **LLM re-ranking** (Cohere Rerank) scores the merged candidate set against the user query and promotes the most relevant context.
+
+The top re-ranked chunks are then passed to Gemini for grounded answer generation, and the response is returned with source references.
+
+![ProductionRAG Architecture](assets/architecture-diagram.png)
+
 ## Quick Start
 
 ### Backend
